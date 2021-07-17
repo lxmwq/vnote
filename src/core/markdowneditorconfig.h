@@ -30,6 +30,15 @@ namespace vnotex
             DigDotDig
         };
 
+        enum InplacePreviewSource
+        {
+            NoInplacePreview = 0,
+            ImageLink = 0x1,
+            CodeBlock = 0x2,
+            Math = 0x4
+        };
+        Q_DECLARE_FLAGS(InplacePreviewSources, InplacePreviewSource);
+
         MarkdownEditorConfig(ConfigMgr *p_mgr,
                              IConfig *p_topConfig,
                              const QSharedPointer<TextEditorConfig> &p_textEditorConfig);
@@ -48,8 +57,18 @@ namespace vnotex
         const WebResource &getExportResource() const;
 
         bool getWebPlantUml() const;
+        void setWebPlantUml(bool p_enabled);
+
+        const QString &getPlantUmlJar() const;
+        void setPlantUmlJar(const QString &p_jar);
+
+        const QString &getPlantUmlCommand() const;
 
         bool getWebGraphviz() const;
+        void setWebGraphviz(bool p_enabled);
+
+        const QString &getGraphvizExe() const;
+        void setGraphvizExe(const QString &p_exe);
 
         bool getPrependDotInRelativeLink() const;
 
@@ -71,8 +90,8 @@ namespace vnotex
         bool getConstrainImageWidthEnabled() const;
         void setConstrainImageWidthEnabled(bool p_enabled);
 
-        bool getConstrainInPlacePreviewWidthEnabled() const;
-        void setConstrainInPlacePreviewWidthEnabled(bool p_enabled);
+        bool getConstrainInplacePreviewWidthEnabled() const;
+        void setConstrainInplacePreviewWidthEnabled(bool p_enabled);
 
         qreal getZoomFactorInReadMode() const;
         void setZoomFactorInReadMode(qreal p_factor);
@@ -102,6 +121,12 @@ namespace vnotex
         bool isSpellCheckEnabled() const;
         void setSpellCheckEnabled(bool p_enabled);
 
+        const QString &getEditorOverriddenFontFamily() const;
+        void setEditorOverriddenFontFamily(const QString &p_family);
+
+        InplacePreviewSources getInplacePreviewSources() const;
+        void setInplacePreviewSources(InplacePreviewSources p_src);
+
     private:
         QString sectionNumberModeToString(SectionNumberMode p_mode) const;
         SectionNumberMode stringToSectionNumberMode(const QString &p_str) const;
@@ -115,6 +140,9 @@ namespace vnotex
         void loadExportResource(const QJsonObject &p_app, const QJsonObject &p_user);
         QJsonObject saveExportResource() const;
 
+        QString inplacePreviewSourceToString(InplacePreviewSource p_src) const;
+        InplacePreviewSource stringToInplacePreviewSource(const QString &p_str) const;
+
         QSharedPointer<TextEditorConfig> m_textEditorConfig;
 
         WebResource m_viewerResource;
@@ -124,7 +152,17 @@ namespace vnotex
         // Whether use javascript or external program to render PlantUML.
         bool m_webPlantUml = true;
 
+        // File path of the JAR to render PlantUmL.
+        QString m_plantUmlJar;
+
+        // Command to render PlantUml. If set, will ignore m_plantUmlJar.
+        // %1: the format to render in.
+        QString m_plantUmlCommand;
+
         bool m_webGraphviz = true;
+
+        // Graphviz executable file.
+        QString m_graphvizExe;
 
         // Whether prepend a dot in front of the relative link, like images.
         bool m_prependDotInRelativeLink = false;
@@ -148,7 +186,7 @@ namespace vnotex
         bool m_constrainImageWidthEnabled = true;
 
         // Whether enable in-place preview width constraint.
-        bool m_constrainInPlacePreviewWidthEnabled = false;
+        bool m_constrainInplacePreviewWidthEnabled = false;
 
         qreal m_zoomFactorInReadMode = 1.0;
 
@@ -177,7 +215,14 @@ namespace vnotex
 
         // Override the config in TextEditorConfig.
         bool m_spellCheckEnabled = true;
+
+        // Font family to override the editor's theme.
+        QString m_editorOverriddenFontFamily;
+
+        InplacePreviewSources m_inplacePreviewSources = InplacePreviewSource::NoInplacePreview;
     };
 }
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(vnotex::MarkdownEditorConfig::InplacePreviewSources)
 
 #endif // MARKDOWNEDITORCONFIG_H

@@ -30,7 +30,14 @@ void MarkdownEditorConfig::init(const QJsonObject &p_app, const QJsonObject &p_u
     loadExportResource(appObj, userObj);
 
     m_webPlantUml = READBOOL(QStringLiteral("web_plantuml"));
+
+    m_plantUmlJar = READSTR(QStringLiteral("plantuml_jar"));
+
+    m_plantUmlCommand = READSTR(QStringLiteral("plantuml_command"));
+
     m_webGraphviz = READBOOL(QStringLiteral("web_graphviz"));
+
+    m_graphvizExe = READSTR(QStringLiteral("graphviz_exe"));
 
     m_prependDotInRelativeLink = READBOOL(QStringLiteral("prepend_dot_in_relative_link"));
     m_confirmBeforeClearObsoleteImages = READBOOL(QStringLiteral("confirm_before_clear_obsolete_images"));
@@ -41,7 +48,7 @@ void MarkdownEditorConfig::init(const QJsonObject &p_app, const QJsonObject &p_u
     m_sectionNumberStyle = stringToSectionNumberStyle(READSTR(QStringLiteral("section_number_style")));
 
     m_constrainImageWidthEnabled = READBOOL(QStringLiteral("constrain_image_width"));
-    m_constrainInPlacePreviewWidthEnabled = READBOOL(QStringLiteral("constrain_inplace_preview_width"));
+    m_constrainInplacePreviewWidthEnabled = READBOOL(QStringLiteral("constrain_inplace_preview_width"));
     m_zoomFactorInReadMode = READREAL(QStringLiteral("zoom_factor_in_read_mode"));
     m_fetchImagesInParseAndPaste = READBOOL(QStringLiteral("fetch_images_in_parse_and_paste"));
 
@@ -55,6 +62,16 @@ void MarkdownEditorConfig::init(const QJsonObject &p_app, const QJsonObject &p_u
     m_smartTableInterval = READINT(QStringLiteral("smart_table_interval"));
 
     m_spellCheckEnabled = READBOOL(QStringLiteral("spell_check"));
+
+    m_editorOverriddenFontFamily = READSTR(QStringLiteral("editor_overridden_font_family"));
+
+    {
+        m_inplacePreviewSources = InplacePreviewSource::NoInplacePreview;
+        auto srcs = READSTR(QStringLiteral("inplace_preview_sources")).split(QLatin1Char(';'));
+        for (const auto &src : srcs) {
+            m_inplacePreviewSources |= stringToInplacePreviewSource(src);
+        }
+    }
 }
 
 QJsonObject MarkdownEditorConfig::toJson() const
@@ -63,7 +80,10 @@ QJsonObject MarkdownEditorConfig::toJson() const
     obj[QStringLiteral("viewer_resource")] = saveViewerResource();
     obj[QStringLiteral("export_resource")] = saveExportResource();
     obj[QStringLiteral("web_plantuml")] = m_webPlantUml;
+    obj[QStringLiteral("plantuml_jar")] = m_plantUmlJar;
+    obj[QStringLiteral("plantuml_command")] = m_plantUmlCommand;
     obj[QStringLiteral("web_graphviz")] = m_webGraphviz;
+    obj[QStringLiteral("graphviz_exe")] = m_graphvizExe;
     obj[QStringLiteral("prepend_dot_in_relative_link")] = m_prependDotInRelativeLink;
     obj[QStringLiteral("confirm_before_clear_obsolete_images")] = m_confirmBeforeClearObsoleteImages;
     obj[QStringLiteral("insert_file_name_as_title")] = m_insertFileNameAsTitle;
@@ -73,7 +93,7 @@ QJsonObject MarkdownEditorConfig::toJson() const
     obj[QStringLiteral("section_number_style")] = sectionNumberStyleToString(m_sectionNumberStyle);
 
     obj[QStringLiteral("constrain_image_width")] = m_constrainImageWidthEnabled;
-    obj[QStringLiteral("constrain_inplace_preview_width")] = m_constrainInPlacePreviewWidthEnabled;
+    obj[QStringLiteral("constrain_inplace_preview_width")] = m_constrainInplacePreviewWidthEnabled;
     obj[QStringLiteral("zoom_factor_in_read_mode")] = m_zoomFactorInReadMode;
     obj[QStringLiteral("fetch_images_in_parse_and_paste")] = m_fetchImagesInParseAndPaste;
     obj[QStringLiteral("protect_from_xss")] = m_protectFromXss;
@@ -84,6 +104,22 @@ QJsonObject MarkdownEditorConfig::toJson() const
     obj[QStringLiteral("smart_table")] = m_smartTableEnabled;
     obj[QStringLiteral("smart_table_interval")] = m_smartTableInterval;
     obj[QStringLiteral("spell_check")] = m_spellCheckEnabled;
+    obj[QStringLiteral("editor_overridden_font_family")] = m_editorOverriddenFontFamily;
+
+    {
+        QStringList srcs;
+        if (m_inplacePreviewSources & InplacePreviewSource::ImageLink) {
+            srcs << inplacePreviewSourceToString(InplacePreviewSource::ImageLink);
+        }
+        if (m_inplacePreviewSources & InplacePreviewSource::CodeBlock) {
+            srcs << inplacePreviewSourceToString(InplacePreviewSource::CodeBlock);
+        }
+        if (m_inplacePreviewSources & InplacePreviewSource::Math) {
+            srcs << inplacePreviewSourceToString(InplacePreviewSource::Math);
+        }
+        obj[QStringLiteral("inplace_preview_sources")] = srcs.join(QLatin1Char(';'));
+    }
+
     return obj;
 }
 
@@ -167,9 +203,44 @@ bool MarkdownEditorConfig::getWebPlantUml() const
     return m_webPlantUml;
 }
 
+void MarkdownEditorConfig::setWebPlantUml(bool p_enabled)
+{
+    updateConfig(m_webPlantUml, p_enabled, this);
+}
+
+const QString &MarkdownEditorConfig::getPlantUmlJar() const
+{
+    return m_plantUmlJar;
+}
+
+void MarkdownEditorConfig::setPlantUmlJar(const QString &p_jar)
+{
+    updateConfig(m_plantUmlJar, p_jar, this);
+}
+
+const QString &MarkdownEditorConfig::getPlantUmlCommand() const
+{
+    return m_plantUmlCommand;
+}
+
 bool MarkdownEditorConfig::getWebGraphviz() const
 {
     return m_webGraphviz;
+}
+
+void MarkdownEditorConfig::setWebGraphviz(bool p_enabled)
+{
+    updateConfig(m_webGraphviz, p_enabled, this);
+}
+
+const QString &MarkdownEditorConfig::getGraphvizExe() const
+{
+    return m_graphvizExe;
+}
+
+void MarkdownEditorConfig::setGraphvizExe(const QString &p_exe)
+{
+    updateConfig(m_graphvizExe, p_exe, this);
 }
 
 bool MarkdownEditorConfig::getPrependDotInRelativeLink() const
@@ -209,14 +280,14 @@ void MarkdownEditorConfig::setConstrainImageWidthEnabled(bool p_enabled)
     updateConfig(m_constrainImageWidthEnabled, p_enabled, this);
 }
 
-bool MarkdownEditorConfig::getConstrainInPlacePreviewWidthEnabled() const
+bool MarkdownEditorConfig::getConstrainInplacePreviewWidthEnabled() const
 {
-    return m_constrainInPlacePreviewWidthEnabled;
+    return m_constrainInplacePreviewWidthEnabled;
 }
 
-void MarkdownEditorConfig::setConstrainInPlacePreviewWidthEnabled(bool p_enabled)
+void MarkdownEditorConfig::setConstrainInplacePreviewWidthEnabled(bool p_enabled)
 {
-    updateConfig(m_constrainInPlacePreviewWidthEnabled, p_enabled, this);
+    updateConfig(m_constrainInplacePreviewWidthEnabled, p_enabled, this);
 }
 
 qreal MarkdownEditorConfig::getZoomFactorInReadMode() const
@@ -331,6 +402,37 @@ MarkdownEditorConfig::SectionNumberStyle MarkdownEditorConfig::stringToSectionNu
     }
 }
 
+QString MarkdownEditorConfig::inplacePreviewSourceToString(InplacePreviewSource p_src) const
+{
+    switch (p_src) {
+    case InplacePreviewSource::ImageLink:
+        return QStringLiteral("imagelink");
+
+    case InplacePreviewSource::CodeBlock:
+        return QStringLiteral("codeblock");
+
+    case InplacePreviewSource::Math:
+        return QStringLiteral("math");
+
+    default:
+        return "";
+    }
+}
+
+MarkdownEditorConfig::InplacePreviewSource MarkdownEditorConfig::stringToInplacePreviewSource(const QString &p_str) const
+{
+    auto src = p_str.toLower();
+    if (src == QStringLiteral("imagelink")) {
+        return InplacePreviewSource::ImageLink;
+    } else if (src == QStringLiteral("codeblock")) {
+        return InplacePreviewSource::CodeBlock;
+    } else if (src == QStringLiteral("math")) {
+        return InplacePreviewSource::Math;
+    } else {
+        return InplacePreviewSource::NoInplacePreview;
+    }
+}
+
 MarkdownEditorConfig::SectionNumberMode MarkdownEditorConfig::getSectionNumberMode() const
 {
     return m_sectionNumberMode;
@@ -384,4 +486,24 @@ bool MarkdownEditorConfig::isSpellCheckEnabled() const
 void MarkdownEditorConfig::setSpellCheckEnabled(bool p_enabled)
 {
     updateConfig(m_spellCheckEnabled, p_enabled, this);
+}
+
+const QString &MarkdownEditorConfig::getEditorOverriddenFontFamily() const
+{
+    return m_editorOverriddenFontFamily;
+}
+
+void MarkdownEditorConfig::setEditorOverriddenFontFamily(const QString &p_family)
+{
+    updateConfig(m_editorOverriddenFontFamily, p_family, this);
+}
+
+MarkdownEditorConfig::InplacePreviewSources MarkdownEditorConfig::getInplacePreviewSources() const
+{
+    return m_inplacePreviewSources;
+}
+
+void MarkdownEditorConfig::setInplacePreviewSources(InplacePreviewSources p_src)
+{
+    updateConfig(m_inplacePreviewSources, p_src, this);
 }
